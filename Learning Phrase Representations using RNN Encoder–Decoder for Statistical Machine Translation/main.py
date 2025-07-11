@@ -1,6 +1,3 @@
-import sys
-"""path = "/Users/yadyneshsonale/github/Learning Phrase Representations using RNN Encoder–Decoder for Statistical Machine Translation/"
-sys.path.append(path)  """
 from models import RNNEncoder, RNNDecoder
 from functions import tokenize, get_tokens, english_numericalize, french_numericalize, Pad_or_Trunc
 
@@ -19,7 +16,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 
 
-data_path = "/home/cs23b1055/text/data.csv"
+data_path = "data.csv"
 
 data = pd.read_csv(data_path)
 
