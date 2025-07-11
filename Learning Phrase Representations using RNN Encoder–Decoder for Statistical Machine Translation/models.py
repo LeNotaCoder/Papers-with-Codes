@@ -1,79 +1,71 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class ResetGate(nn.Module):
     def __init__(self, input_size, hidden_size):
         super(ResetGate, self).__init__()
-        self.W = nn.Parameter(torch.randn(hidden_size, input_size))
-        self.U = nn.Parameter(torch.randn(hidden_size, hidden_size))
+
+        self.linear_x = nn.Linear(input_size, hidden_size, bias=False)
+        self.linear_h = nn.Linear(hidden_size, hidden_size, bias=False)
 
     def forward(self, x, h_old):
-        W_x = torch.matmul(self.W, x)
-        U_h = torch.matmul(self.U, h_old)
-        return torch.sigmoid(W_x + U_h)
+        return torch.sigmoid(self.linear_x(x) + self.linear_h(h_old))
 
 
 class UpdateGate(nn.Module):
     def __init__(self, input_size, hidden_size):
         super(UpdateGate, self).__init__()
-        self.W = nn.Parameter(torch.randn(hidden_size, input_size))
-        self.U = nn.Parameter(torch.randn(hidden_size, hidden_size))
+
+        self.linear_x = nn.Linear(input_size, hidden_size, bias=False)
+        self.linear_h = nn.Linear(hidden_size, hidden_size, bias=False)
 
     def forward(self, x, h_old):
-        W_x = torch.matmul(self.W, x)
-        U_h = torch.matmul(self.U, h_old)
-        return torch.sigmoid(W_x + U_h)
+        return torch.sigmoid(self.linear_x(x) + self.linear_h(h_old))
 
 
 class RNNEncoder(nn.Module):
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, vocab_size, embedding_dim, hidden_size):
         super(RNNEncoder, self).__init__()
-        self.reset = ResetGate(input_size, hidden_size)
-        self.update = UpdateGate(input_size, hidden_size)
-        self.W = nn.Parameter(torch.randn(hidden_size, input_size))
-        self.U = nn.Parameter(torch.randn(hidden_size, hidden_size))
 
-    def forward(self, x, h_old):
-        z_t = self.update(x, h_old)
-        r_t = self.reset(x, h_old)
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.reset = ResetGate(embedding_dim, hidden_size)
+        self.update = UpdateGate(embedding_dim, hidden_size)
+        self.linear_x = nn.Linear(embedding_dim, hidden_size, bias=False)
+        self.linear_h = nn.Linear(hidden_size, hidden_size, bias=False)
 
-        r_h = r_t * h_old
-        h_tilde = torch.tanh(torch.matmul(self.W, x) + torch.matmul(self.U, r_h))
+    def forward(self, input_seq):
 
-        h_t = z_t * h_old + (1 - z_t) * h_tilde
+        h_t = torch.zeros(self.linear_h.out_features).to(input_seq.device)
+        for token_idx in input_seq:
+            x = self.embedding(token_idx)
+            z_t = self.update(x, h_t)
+            r_t = self.reset(x, h_t)
+            r_h = r_t * h_t
+            h_tilde = torch.tanh(self.linear_x(x) + self.linear_h(r_h))
+            h_t = z_t * h_t + (1 - z_t) * h_tilde
+        return h_t  # context vector
 
-        return h_t
 
 
 class RNNDecoder(nn.Module):
-    def __init__(self, c, input_size, hidden_size, output_size):
+    def __init__(self, vocab_size, embedding_dim, hidden_size):
         super(RNNDecoder, self).__init__()
-        self.reset = ResetGate(input_size, hidden_size)
-        self.update = UpdateGate(input_size, hidden_size)
-        self.W = nn.Parameter(torch.randn(hidden_size, input_size))
-        self.U = nn.Parameter(torch.randn(hidden_size, hidden_size))
 
-        self.W_o = nn.Parameter(torch.randn(output_size, hidden_size))
-        self.b_o = nn.Parameter(torch.randn(output_size))
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.reset = ResetGate(embedding_dim, hidden_size)
+        self.update = UpdateGate(embedding_dim, hidden_size)
+        self.linear_x = nn.Linear(embedding_dim, hidden_size, bias=False)
+        self.linear_h = nn.Linear(hidden_size, hidden_size, bias=False)
+        self.output_layer = nn.Linear(hidden_size, vocab_size)
 
-        self.c = c  # context vector 
-
-    def hidden(self, h_old):
-        c = self.c 
-
-        z_t = self.update(c, h_old)
-        r_t = self.reset(c, h_old)
-
-        r_h = r_t * h_old
-        h_tilde = torch.tanh(torch.matmul(self.W, c) + torch.matmul(self.U, r_h))
-
-        h_t = z_t * h_old + (1 - z_t) * h_tilde
-
-        return h_t
-
-    def forward(self, h_t):
-
-        o_t = torch.matmul(self.W_o, h_t) + self.b_o
-        y_t = torch.softmax(o_t, dim=0)
+    def forward(self, token_idx, h_old):
         
-        return y_t
+        x = self.embedding(token_idx)
+        z_t = self.update(x, h_old)
+        r_t = self.reset(x, h_old)
+        r_h = r_t * h_old
+        h_tilde = torch.tanh(self.linear_x(x) + self.linear_h(r_h))
+        h_t = z_t * h_old + (1 - z_t) * h_tilde
+        output = self.output_layer(h_t)
+        return output, h_t
