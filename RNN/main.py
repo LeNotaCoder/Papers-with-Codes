@@ -8,6 +8,7 @@ from optim import SGD
 from data import ALL_LETTRS, NUM_LETTERS
 from data import load_raw_data, word_to_tensor, MyDataset
 from models import RNN
+from functions import train, get_index
 
 NUM_CATEGORIES = len(os.listdir("./data/data/"))
 NUM_HIDDEN = 128
@@ -26,8 +27,8 @@ X_train, X_test, y_train, y_test = train_test_split(tensor_data, labels, test_si
 train_dataset = MyDataset(X_train, y_train)
 test_dataset = MyDataset(X_test, y_test)
 
-train_loader = Dataloader(train_dataset, batch_size=BATCH_SIZE)
-test_loader = Dataloader(test_dataset, batch_size=BATCH_SIZE)
+train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE)
+test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE)
 
 rnn = RNN(NUM_LETTERS, NUM_HIDDEN, NUM_CATEGORIES)
 
@@ -61,8 +62,12 @@ current_loss = 0.0
 all_losses = []
 
 for epoch in range(NUM_EPOCHS):
+    for words, labels in train_loader:
+        for j in range(len(labels)):
+            output, loss = train(words[j], labels[j])
+            current_loss += loss
 
-
-
-
-
+            print(get_index(output))
+        
+        all_losses.append(current_loss / BATCH_SIZE)
+        current_loss = 0.0
