@@ -2,8 +2,6 @@ import torch
 import string
 import os
 import pandas as pd
-from torch.utils.data import Dataset
-
 
 ALL_LETTRS = string.ascii_letters + ".,;'"
 NUM_LETTERS = len(ALL_LETTRS)
