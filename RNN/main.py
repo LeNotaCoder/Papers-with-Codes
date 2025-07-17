@@ -15,6 +15,7 @@ NUM_EPOCHS = 2000
 BATCH_SIZE = 64
 
 data, labels = load_raw_data()
+print("hello")
 
 tensor_data = []
 for word in data:
