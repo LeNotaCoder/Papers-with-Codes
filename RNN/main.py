@@ -3,7 +3,8 @@ import torch.nn as nn
 import os
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
-from optim import SGD
+from torch.optim import SGD
+
 
 from data import ALL_LETTRS, NUM_LETTERS
 from data import load_raw_data, word_to_tensor, MyDataset
