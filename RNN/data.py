@@ -2,6 +2,7 @@ import torch
 import string
 import os
 import pandas as pd
+from torch.utils.data import Dataset
 
 ALL_LETTRS = string.ascii_letters + ".,;'"
 NUM_LETTERS = len(ALL_LETTRS)
@@ -31,6 +32,20 @@ def load_raw_data():
         labels += [i] * len(data)
 
     return dataset, labels
+
+
+class MyDataset(Dataset):
+    def __init__(self, X, y):
+        super(MyDataset, self).__init__()
+
+        self.data = X
+        self.labels = y 
+
+    def __getitem__(self, index):
+        return self.data[index], torch.tensor(self.labels[index], dtype=torch.long)
+    
+    def __len__(self):
+        return len(self.labels)
     
 
 

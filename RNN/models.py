@@ -12,7 +12,7 @@ class RNN(nn.Module):
         self.softmax = nn.LogSoftmax(dim=1)
 
     def forward(self, input_tensor, hidden_tensor):
-        combined = torch.cat((input_tensor, hidden_tensor), dim=1)
+        combined = torch.cat((input_tensor, hidden_tensor), 1)
 
         hidden = self.input_2_hidden(combined)
         output = self.input_2_output(combined)
