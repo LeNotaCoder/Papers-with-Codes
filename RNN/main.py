@@ -3,19 +3,19 @@ import torch.nn as nn
 import os
 from sklearn.model_selection import train_test_split
 from torch.optim import SGD
+import random
 
 
-from data import ALL_LETTRS, NUM_LETTERS
+from data import ALL_LETTRS, NUM_LETTERS, MyDataset
 from data import load_raw_data, word_to_tensor
 from models import RNN
 
 NUM_CATEGORIES = len(os.listdir("./data/data/"))
 NUM_HIDDEN = 128
-NUM_EPOCHS = 2000
+NUM_EPOCHS = 1
 BATCH_SIZE = 64
 
 data, labels = load_raw_data()
-print("hello")
 
 tensor_data = []
 for word in data:
@@ -30,7 +30,12 @@ def labels_to_tensors(index):
 
 labels = [labels_to_tensors(label) for label in labels]
 
+NUM_DATAPOINTS = len(labels)
+
 X_train, X_test, y_train, y_test = train_test_split(tensor_data, labels, test_size=0.2, random_state=42)
+
+train_dataset = MyDataset(X_train, y_train, BATCH_SIZE)
+test_dataset = MyDataset(X_test, y_test, BATCH_SIZE)
 
 rnn = RNN(NUM_LETTERS, NUM_HIDDEN, NUM_CATEGORIES)
 
@@ -60,15 +65,19 @@ def train(word_tensor, label_tensor):
 def get_index(output):
     return torch.argmax(output).item()
 
-for epoch in range(NUM_EPOCHS):
-    for k in range(len(y_train)):
-        output, loss = train(X_train[k], y_train[k])
-        
-        current_loss += loss
-        correct += 1 if get_index(output) == get_index(y_train[k]) else 0
+plot_steps = 1000
+n_iters = 100000
+train_size = int(0.8 * (NUM_DATAPOINTS - 1)) - 1
+
+for i in range(n_iters):
+    index = random.randint(0, train_size)
+    line_tensor, category_tensor = train_dataset.getitem(index)
     
-    all_losses.append(current_loss / BATCH_SIZE)
-    print(f"Accuracy: {correct / BATCH_SIZE}, Loss: {current_loss / BATCH_SIZE}")
-    correct = 0
-    current_loss = 0.0
+    output, loss = train(line_tensor, category_tensor)
+    current_loss += loss 
+    
+    if (i+1) % plot_steps == 0:
+        all_losses.append(current_loss / plot_steps)
+        current_loss = 0
+
 
