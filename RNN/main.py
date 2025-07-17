@@ -9,7 +9,6 @@ from torch.optim import SGD
 from data import ALL_LETTRS, NUM_LETTERS
 from data import load_raw_data, word_to_tensor, MyDataset
 from models import RNN
-from functions import train, get_index
 
 NUM_CATEGORIES = len(os.listdir("./data/data/"))
 NUM_HIDDEN = 128
