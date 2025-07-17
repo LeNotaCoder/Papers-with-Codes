@@ -2,17 +2,16 @@ import torch
 import torch.nn as nn
 import os
 from sklearn.model_selection import train_test_split
-from torch.utils.data import DataLoader
 from torch.optim import SGD
 
 
 from data import ALL_LETTRS, NUM_LETTERS
-from data import load_raw_data, word_to_tensor, MyDataset
+from data import load_raw_data, word_to_tensor
 from models import RNN
 
 NUM_CATEGORIES = len(os.listdir("./data/data/"))
 NUM_HIDDEN = 128
-NUM_EPOCHS = 2
+NUM_EPOCHS = 2000
 BATCH_SIZE = 64
 
 data, labels = load_raw_data()
@@ -22,28 +21,24 @@ for word in data:
     tensor = word_to_tensor(word)
     tensor_data.append(tensor)
 
+def labels_to_tensors(index):
+    tensor = torch.zeros(1, NUM_CATEGORIES, dtype=torch.long)
+    tensor[0][index] = 1
+    return tensor
+
+
+labels = [labels_to_tensors(label) for label in labels]
+
 X_train, X_test, y_train, y_test = train_test_split(tensor_data, labels, test_size=0.2, random_state=42)
 
-train_dataset = MyDataset(X_train, y_train)
-test_dataset = MyDataset(X_test, y_test)
-
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE)
-test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE)
-
 rnn = RNN(NUM_LETTERS, NUM_HIDDEN, NUM_CATEGORIES)
-
-#one step
-
-input_tensor = word_to_tensor('J')[0]
-hidden_tensor = rnn.init_hidden()
-
-output, next_hidden = rnn(input_tensor, hidden_tensor)
 
 criterion = nn.NLLLoss()
 learning_rate = 0.005
 optimizer = SGD(rnn.parameters(), lr=learning_rate)
 
 current_loss = 0.0
+correct = 0
 all_losses = []
 
 def train(word_tensor, label_tensor):
@@ -51,9 +46,9 @@ def train(word_tensor, label_tensor):
     hidden = rnn.init_hidden()
 
     for i in range(word_tensor.size()[0]):
-        output, hidden = rnn(word_tensor[i], hidden)
+        output, hidden = rnn(word_tensor[i], hidden)  
     
-    loss = criterion(output, label_tensor)
+    loss = criterion(output[0], label_tensor[0])
 
     optimizer.zero_grad()
     loss.backward()
@@ -62,15 +57,17 @@ def train(word_tensor, label_tensor):
     return output, loss.item()
 
 def get_index(output):
-    return torch.argmax(output)
+    return torch.argmax(output).item()
 
 for epoch in range(NUM_EPOCHS):
-    for words, labels in train_loader:
-        for j in range(len(labels)):
-            output, loss = train(words[j], labels[j])
-            current_loss += loss
-
-            print(get_index(output))
+    for k in range(len(y_train)):
+        output, loss = train(X_train[k], y_train[k])
         
-        all_losses.append(current_loss / BATCH_SIZE)
-        current_loss = 0.0
+        current_loss += loss
+        correct += 1 if get_index(output) == get_index(y_train[k]) else 0
+    
+    all_losses.append(current_loss / BATCH_SIZE)
+    print(f"Accuracy: {correct / BATCH_SIZE}, Loss: {current_loss / BATCH_SIZE}")
+    correct = 0
+    current_loss = 0.0
+
