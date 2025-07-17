@@ -78,6 +78,7 @@ for i in range(n_iters):
     
     if (i+1) % plot_steps == 0:
         all_losses.append(current_loss / plot_steps)
+        print(all_losses[-1])
         current_loss = 0
 
 
