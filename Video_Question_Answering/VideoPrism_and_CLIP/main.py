@@ -2,16 +2,16 @@ import jax
 import jax.numpy as jnp
 from videoprism import models as vp
 import numpy as np
-import json
-import pandas as pd
+
 import torch
 import os
 from transformers import CLIPProcessor, CLIPModel
 import torchvision.transforms as T
 import torch.nn.functional as F
 
+
 from models import IntermidiateModel
-from functions import read_video_frames, show_tensor_as_image
+from functions import read_video_frames
 
 
 path = "/home/cs23b1055/videos2"
@@ -24,12 +24,15 @@ state = vp.load_pretrained_weights(model_name)
 def forward_fn(inputs):
     return flax_model.apply(state, inputs, train=False)
 
-model = IntermidiateModel()
+
+
+
 
 clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
 clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
-
+import json
+import pandas as pd
 
 records = []
 with open('/home/cs23b1055/all_train.json', 'r') as f:
@@ -61,7 +64,10 @@ for _, _, files in os.walk(path):
         
         outputs_torch = torch.tensor(np.array(outputs))
         
+        model = ToImage()
         image = model(outputs_torch)
+        
+        image = show_tensor_as_image(image)
         
         vid = file[:-4]
         print(vid)
@@ -74,7 +80,6 @@ for _, _, files in os.walk(path):
                 text.append(question + ", " + option)
             
             inputs = clip_processor(images=image, text=text, return_tensors="pt", padding=True)
-            inputs['pixel_values'] = image
     
             output = clip_model(**inputs)
             logits_per_image = output.logits_per_image
